@@ -441,4 +441,151 @@ async function generateChatResponse(message, financialSummary) {
   }
 }
 
-module.exports = { generateFinancialInsights, generateChatResponse };
+// ── Image extraction prompt (shared by both providers) ────────────────────
+
+const IMAGE_EXTRACTION_PROMPT = `Extract all financial transactions from this bank statement or receipt image.
+Return ONLY a valid JSON array of objects. Do not include markdown code fences, backticks, or explanations.
+Each object must have exactly these fields:
+- date: "YYYY-MM-DD" format
+- type: "income" or "expense"
+- amount: positive number (no currency symbols)
+- category: A short sensible category string (e.g. "Food", "Shopping", "Salary", "Utilities")
+- description: A short description of the transaction
+
+Skip any row where the amount or date cannot be reliably determined.
+Output ONLY the JSON array, nothing else.`;
+
+/**
+ * OpenRouter vision fallback for image extraction.
+ * Uses meta-llama/llama-3.2-11b-vision-instruct:free which natively supports
+ * image_url multimodal messages via the OpenAI-compatible API.
+ *
+ * @param {Buffer} imageBuffer
+ * @param {string} mimeType
+ * @returns {Promise<Array>}
+ */
+async function extractTransactionsFromOpenRouterVision(imageBuffer, mimeType) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENROUTER_API_KEY is not configured');
+  }
+
+  const base64 = imageBuffer.toString('base64');
+  const dataUrl = `data:${mimeType};base64,${base64}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 s for vision
+
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'openrouter/free',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: { url: dataUrl },
+              },
+              {
+                type: 'text',
+                text: IMAGE_EXTRACTION_PROMPT,
+              },
+            ],
+          },
+        ],
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const bodyText = await response.text().catch(() => '');
+      console.error('[AI] OpenRouter vision HTTP error:', response.status, bodyText.slice(0, 300));
+      throw new Error(`OpenRouter vision HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const rawText = data?.choices?.[0]?.message?.content;
+    if (!rawText) {
+      throw new Error('OpenRouter vision returned an empty response.');
+    }
+
+    // Strip markdown code fences if present
+    const parsed = parseGeminiResponse(rawText);
+    if (!Array.isArray(parsed)) {
+      throw new Error('OpenRouter vision response is not a valid JSON array.');
+    }
+
+    return parsed;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
+/**
+ * Extracts transactions from an image buffer.
+ * Primary provider: Gemini Vision (gemini-3.6-flash).
+ * Fallback provider: OpenRouter vision (llama-3.2-11b-vision-instruct:free).
+ * If both fail, throws a clear error — no deterministic fallback for image extraction.
+ *
+ * @param {Buffer} imageBuffer - The raw image data
+ * @param {string} mimeType   - MIME type e.g. 'image/jpeg'
+ * @returns {Promise<Array>}  - Array of normalised transaction objects
+ */
+async function extractTransactionsFromImage(imageBuffer, mimeType) {
+  // ── 1. Try Gemini Vision ─────────────────────────────────────────────────
+  try {
+    const client = getClient();
+
+    const response = await client.models.generateContent({
+      model: 'gemini-3.6-flash',
+      contents: [
+        IMAGE_EXTRACTION_PROMPT,
+        {
+          inlineData: {
+            data: imageBuffer.toString('base64'),
+            mimeType,
+          },
+        },
+      ],
+    });
+
+    const rawText = response.text;
+    if (!rawText) throw new Error('Gemini returned an empty response for image extraction.');
+
+    const parsed = parseGeminiResponse(rawText);
+    if (!Array.isArray(parsed)) throw new Error('Gemini response is not a valid JSON array.');
+
+    console.info('[AI] Image extraction succeeded via Gemini.');
+    return parsed;
+  } catch (geminiError) {
+    console.warn('[AI] Gemini image extraction failed:', geminiError.message);
+    console.warn('[AI] Trying OpenRouter vision fallback...');
+  }
+
+  // ── 2. Try OpenRouter Vision ─────────────────────────────────────────────
+  try {
+    const parsed = await extractTransactionsFromOpenRouterVision(imageBuffer, mimeType);
+    console.info('[AI] Image extraction succeeded via OpenRouter vision.');
+    return parsed;
+  } catch (orError) {
+    console.error('[AI] OpenRouter vision fallback failed:', orError.message);
+  }
+
+  // ── 3. Both providers failed — throw, do NOT use deterministic fallback ──
+  throw new Error(
+    'Image extraction is temporarily unavailable. Both AI providers failed to process the image. ' +
+    'Please try again shortly or use the CSV import option instead.'
+  );
+}
+
+module.exports = { generateFinancialInsights, generateChatResponse, extractTransactionsFromImage };

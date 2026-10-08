@@ -164,4 +164,41 @@ const chatWithAI = async (req, res) => {
   }
 };
 
-module.exports = { getAIInsights, chatWithAI };
+/**
+ * @desc    Extract transactions from an uploaded image
+ * @route   POST /api/ai/extract-transactions
+ * @access  Private (requires Bearer token)
+ */
+const extractTransactions = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No image uploaded.' });
+    }
+
+    const { buffer, mimetype } = req.file;
+    if (!mimetype.startsWith('image/')) {
+      return res.status(400).json({ success: false, message: 'File must be an image.' });
+    }
+
+    // Call the AI service
+    const { extractTransactionsFromImage } = require('../services/aiService');
+    const transactions = await extractTransactionsFromImage(buffer, mimetype);
+
+    return res.status(200).json({
+      success: true,
+      transactions,
+    });
+  } catch (error) {
+    console.error('[aiController] Error extracting transactions:', error.message);
+    const clientMessage = error.message.includes('API_KEY') 
+      ? 'AI service is not configured. Please contact the administrator.'
+      : 'Failed to extract transactions from image. Please ensure the image is clear and try again.';
+      
+    return res.status(500).json({
+      success: false,
+      message: clientMessage,
+    });
+  }
+};
+
+module.exports = { getAIInsights, chatWithAI, extractTransactions };
