@@ -17,6 +17,7 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
+// API Routes
 app.use("/api/users", userRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/ai", aiRoutes);
@@ -30,8 +31,6 @@ app.get("/api/health", (req, res) => {
     });
 });
 
-const PORT = process.env.PORT || 5000;
+// Export Express app for Vercel
+module.exports = app;
 
-app.listen(PORT, () => {
-    console.log(`FinSight server running on port ${PORT}`);
-});
