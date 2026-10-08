@@ -11,11 +11,22 @@ const budgetRoutes = require("./routes/budgetRoutes");
 const app = express();
 
 // Connect to MongoDB
-connectDB();
+// Handled by middleware below for serverless compatibility
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Ensure MongoDB is connected before handling any routes
+app.use(async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (error) {
+        console.error('Database connection error in middleware:', error);
+        res.status(500).json({ success: false, message: 'Database connection failed' });
+    }
+});
 
 // API Routes
 app.use("/api/users", userRoutes);
