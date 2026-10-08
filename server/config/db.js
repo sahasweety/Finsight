@@ -25,7 +25,9 @@ const connectDB = async () => {
         const opts = {
             bufferCommands: false,
             serverSelectionTimeoutMS: 30000,
-            socketTimeoutMS: 45000
+            socketTimeoutMS: 45000,
+            tls: true,
+            tlsInsecure: false
         };
 
         cached.promise = mongoose
@@ -47,7 +49,6 @@ const connectDB = async () => {
                     error.message
                 );
 
-                // Show the actual error for each Atlas server
                 if (error.reason && error.reason.servers) {
                     for (const [address, server] of error.reason.servers) {
                         console.error("SERVER:", address);
