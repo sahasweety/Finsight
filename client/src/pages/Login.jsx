@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { fetchApi } from '../utils/api';
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -21,16 +22,10 @@ const Login = () => {
 
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/users/login', {
+      const data = await fetchApi('/users/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Login failed');
-      }
 
       localStorage.setItem('token', data.user.token);
       localStorage.setItem('user', JSON.stringify(data.user));
