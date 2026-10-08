@@ -180,7 +180,7 @@ Respond directly to the user's message in plain text. Keep your response under 3
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const OPENROUTER_MODEL = 'meta-llama/llama-3-8b-instruct:free';
+const OPENROUTER_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
 
 async function generateFromOpenRouter(prompt) {
   const apiKey = process.env.OPENROUTER_API_KEY;
