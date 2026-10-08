@@ -1,7 +1,11 @@
 const mongoose = require("mongoose");
 const dns = require("dns");
 
-dns.setServers(["8.8.8.8", "8.8.4.4"]);
+// Apply DNS workaround ONLY for local development
+// Render automatically sets process.env.RENDER = 'true'
+if (!process.env.RENDER && process.env.NODE_ENV !== "production") {
+    dns.setServers(["8.8.8.8", "8.8.4.4"]);
+}
 
 let cached = global.mongoose;
 
