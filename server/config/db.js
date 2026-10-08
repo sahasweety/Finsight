@@ -34,11 +34,33 @@ const connectDB = async () => {
                 console.log(
                     `MongoDB connected: ${mongoose.connection.host}`
                 );
+
                 return mongoose;
             })
             .catch((error) => {
                 console.error(
-                    `MongoDB connection failed: ${error.message}`
+                    "========== MONGODB CONNECTION DEBUG =========="
+                );
+
+                console.error(
+                    "Main error:",
+                    error.message
+                );
+
+                // Show the actual error for each Atlas server
+                if (error.reason && error.reason.servers) {
+                    for (const [address, server] of error.reason.servers) {
+                        console.error("SERVER:", address);
+                        console.error("TYPE:", server.type);
+                        console.error(
+                            "ERROR:",
+                            server.error?.message || "No specific error"
+                        );
+                    }
+                }
+
+                console.error(
+                    "================================================"
                 );
 
                 cached.promise = null;
