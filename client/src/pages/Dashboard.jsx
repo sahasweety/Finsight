@@ -44,7 +44,18 @@ const Dashboard = () => {
     .filter((t) => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const totalBalance = totalIncome - totalExpenses;
+  const totalReceived = transactions
+    .filter((t) => t.type === 'received')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const totalPaid = transactions
+    .filter((t) => t.type === 'paid')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  // Money In = Income + Received; Money Out = Expenses + Paid
+  const totalMoneyIn = totalIncome + totalReceived;
+  const totalMoneyOut = totalExpenses + totalPaid;
+  const totalBalance = totalMoneyIn - totalMoneyOut;
 
   // ── Recent 5 transactions (newest first) ──────────────────────────────────
   const recentTransactions = [...transactions]
@@ -109,7 +120,7 @@ const Dashboard = () => {
               <div className="summary-card summary-card--income">
                 <div className="summary-icon">📈</div>
                 <div className="summary-body">
-                  <span className="summary-label">Total Income</span>
+                  <span className="summary-label">Income</span>
                   <span className="summary-value value--income">
                     {formatINR(totalIncome)}
                   </span>
@@ -120,9 +131,31 @@ const Dashboard = () => {
               <div className="summary-card summary-card--expense">
                 <div className="summary-icon">📉</div>
                 <div className="summary-body">
-                  <span className="summary-label">Total Expenses</span>
+                  <span className="summary-label">Expenses</span>
                   <span className="summary-value value--expense">
                     {formatINR(totalExpenses)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Total Received */}
+              <div className="summary-card summary-card--received">
+                <div className="summary-icon">🤝</div>
+                <div className="summary-body">
+                  <span className="summary-label">Received</span>
+                  <span className="summary-value value--income">
+                    {formatINR(totalReceived)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Total Paid */}
+              <div className="summary-card summary-card--paid">
+                <div className="summary-icon">💸</div>
+                <div className="summary-body">
+                  <span className="summary-label">Paid Out</span>
+                  <span className="summary-value value--expense">
+                    {formatINR(totalPaid)}
                   </span>
                 </div>
               </div>
@@ -165,6 +198,9 @@ const Dashboard = () => {
                         <div className="transaction-main">
                           <span className="transaction-category">
                             {t.category}
+                            {t.party && (
+                              <span className="transaction-party"> · {t.party}</span>
+                            )}
                           </span>
                           <span className="transaction-date">
                             {formatDate(t.date)}
@@ -180,7 +216,7 @@ const Dashboard = () => {
                         <span
                           className={`transaction-amount ${t.type}`}
                         >
-                          {t.type === 'income' ? '+' : '−'}
+                          {(t.type === 'income' || t.type === 'received') ? '+' : '−'}
                           {formatINR(t.amount)}
                         </span>
                         <span className="transaction-type-badge">

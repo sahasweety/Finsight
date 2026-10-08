@@ -9,7 +9,7 @@ const transactionSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['income', 'expense']
+    enum: ['income', 'expense', 'received', 'paid']
   },
   amount: {
     type: Number,
@@ -21,6 +21,10 @@ const transactionSchema = new mongoose.Schema({
     required: true
   },
   description: {
+    type: String
+  },
+  // Optional: person/party name for "received" and "paid" types
+  party: {
     type: String
   },
   date: {

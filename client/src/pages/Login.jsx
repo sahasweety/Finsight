@@ -62,6 +62,9 @@ const Login = () => {
               value={formData.password} 
               onChange={handleChange} 
             />
+            <div style={{ textAlign: 'right', marginTop: '0.5rem' }}>
+              <Link to="/forgot-password" style={{ fontSize: '0.9rem' }}>Forgot Password?</Link>
+            </div>
           </div>
           <button type="submit" className="btn" disabled={loading}>
             {loading ? 'Logging in...' : 'Login'}

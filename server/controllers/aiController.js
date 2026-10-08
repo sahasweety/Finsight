@@ -27,6 +27,8 @@ const { generateFinancialInsights, generateChatResponse } = require('../services
 function buildFinancialSummary(transactions, budgets = []) {
   let totalIncome = 0;
   let totalExpenses = 0;
+  let totalReceived = 0;
+  let totalPaid = 0;
   const expenseByCategory = {};
   const monthlyIncome = {};
   const monthlyExpenses = {};
@@ -40,18 +42,32 @@ function buildFinancialSummary(transactions, budgets = []) {
     } else if (t.type === 'expense') {
       totalExpenses += t.amount;
       monthlyExpenses[monthKey] = (monthlyExpenses[monthKey] || 0) + t.amount;
-
       const cat = t.category || 'Uncategorized';
       expenseByCategory[cat] = (expenseByCategory[cat] || 0) + t.amount;
+    } else if (t.type === 'received') {
+      // Money received from another person — tracked separately from earned income
+      totalReceived += t.amount;
+      monthlyIncome[monthKey] = (monthlyIncome[monthKey] || 0) + t.amount;
+    } else if (t.type === 'paid') {
+      // Money paid/transferred to another person — tracked separately from regular expenses
+      totalPaid += t.amount;
+      monthlyExpenses[monthKey] = (monthlyExpenses[monthKey] || 0) + t.amount;
     }
   }
 
-  const balance = totalIncome - totalExpenses;
-  const savingsRate = totalIncome > 0 ? ((balance / totalIncome) * 100) : 0;
+  // Total money in = income + received; Total money out = expenses + paid
+  const totalMoneyIn = totalIncome + totalReceived;
+  const totalMoneyOut = totalExpenses + totalPaid;
+  const balance = totalMoneyIn - totalMoneyOut;
+  const savingsRate = totalMoneyIn > 0 ? ((balance / totalMoneyIn) * 100) : 0;
 
   return {
     totalIncome,
     totalExpenses,
+    totalReceived,
+    totalPaid,
+    totalMoneyIn,
+    totalMoneyOut,
     balance,
     savingsRate,
     transactionCount: transactions.length,

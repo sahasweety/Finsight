@@ -1,19 +1,21 @@
 const Transaction = require('../models/Transaction');
 
+const VALID_TYPES = ['income', 'expense', 'received', 'paid'];
+
 // @desc    Create a transaction
 // @route   POST /api/transactions
 // @access  Private
 const createTransaction = async (req, res) => {
   try {
-    const { type, amount, category, description, date } = req.body;
+    const { type, amount, category, description, date, party } = req.body;
 
     // Validation
     if (!type || !amount || !category) {
       return res.status(400).json({ success: false, message: 'Please provide type, amount, and category' });
     }
 
-    if (type !== 'income' && type !== 'expense') {
-      return res.status(400).json({ success: false, message: 'Type must be income or expense' });
+    if (!VALID_TYPES.includes(type)) {
+      return res.status(400).json({ success: false, message: 'Type must be income, expense, received, or paid' });
     }
 
     if (amount <= 0) {
@@ -26,6 +28,7 @@ const createTransaction = async (req, res) => {
       amount,
       category,
       description,
+      party: (type === 'received' || type === 'paid') ? party : undefined,
       date: date ? new Date(date) : Date.now()
     });
 
@@ -86,8 +89,8 @@ const updateTransaction = async (req, res) => {
     }
 
     // Validation if trying to update type/amount
-    if (req.body.type && req.body.type !== 'income' && req.body.type !== 'expense') {
-      return res.status(400).json({ success: false, message: 'Type must be income or expense' });
+    if (req.body.type && !VALID_TYPES.includes(req.body.type)) {
+      return res.status(400).json({ success: false, message: 'Type must be income, expense, received, or paid' });
     }
 
     if (req.body.amount !== undefined && req.body.amount <= 0) {
