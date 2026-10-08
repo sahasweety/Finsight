@@ -2,6 +2,11 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 
+console.log("NODE VERSION:", process.version);
+console.log("OPENSSL VERSION:", process.versions.openssl);
+console.log("RENDER:", process.env.RENDER);
+console.log("NODE_ENV:", process.env.NODE_ENV);
+
 const connectDB = require("./config/db");
 const userRoutes = require("./routes/userRoutes");
 const transactionRoutes = require("./routes/transactionRoutes");
